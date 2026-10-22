@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Plomería</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+  <!-- PANTALLA DE LOGIN -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full space-y-6">
+      <div class="text-center">
+        <h1 class="text-2xl font-bold text-slate-800">Inicia Sesión</h1>
+        <p class="text-slate-500 text-sm mt-1">Gestión de Servicios de Plomería</p>
+      </div>
+
+      <form id="formLogin" onsubmit="iniciarSesion(event)" class="space-y-4">
+        <div>
+          <label for="loginEmail" class="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
+          <input type="email" id="loginEmail" required placeholder="correo@ejemplo.com" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        <div>
+          <label for="loginPassword" class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+        
+        <div id="loginError" class="text-rose-600 text-xs hidden bg-rose-50 p-2.5 rounded border border-rose-200"></div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow transition duration-150 text-sm">
+          Ingresar
+        </button>
+<button
+  type="button"
+  onclick="recuperarContrasena()"
+  class="w-full text-blue-600 hover:text-blue-800 text-sm font-semibold mt-2"
+>
+  ¿Olvidaste tu contraseña?
+</button>
+      </form>
+    </div>
+  </div>
+  <!-- PANTALLA DE CAMBIO DE CONTRASEÑA -->
+  <div id="resetPasswordScreen" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full space-y-6">
+
+      <div class="text-center">
+        <h1 class="text-2xl font-bold text-slate-800">
+          Nueva contraseña
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">
+          Creá una nueva contraseña para tu cuenta.
+        </p>
+      </div>
+
+      <div>
+        <label for="nuevaPassword" class="block text-xs font-semibold text-slate-600 mb-1">
+          Nueva contraseña
+        </label>
+        <input
+          type="password"
+          id="nuevaPassword"
+          placeholder="••••••••"
+          minlength="6"
+          class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+      </div>
+
+      <div>
+        <label for="confirmarPassword" class="block text-xs font-semibold text-slate-600 mb-1">
+          Repetir contraseña
+        </label>
+        <input
+          type="password"
+          id="confirmarPassword"
+          placeholder="••••••••"
+          minlength="6"
+          class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+      </div>
+
+      <div
+        id="resetPasswordError"
+        class="text-rose-600 text-xs hidden bg-rose-50 p-2.5 rounded border border-rose-200"
+      ></div>
+
+      <button
+        type="button"
+        id="btnCambiarPassword"
+        onclick="cambiarContrasena()"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow transition duration-150 text-sm"
+      >
+        Cambiar contraseña
+      </button>
+
+    </div>
+  </div>
+
+  <!-- APLICACIÓN PRINCIPAL (Oculta por defecto) -->
+  <div id="appScreen" class="hidden">
+    <!-- Banner de Notificación de Error Global -->
+    <div id="globalError" class="bg-rose-600 text-white text-sm text-center py-2 px-4 hidden flex justify-between items-center">
+      <span id="globalErrorText"></span>
+      <button onclick="cerrarGlobalError()" class="text-white font-bold ml-4">&times;</button>
+    </div>
+
+    <!-- Encabezado -->
+    <header class="bg-blue-700 text-white shadow-md">
+      <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Gestión de Plomería</h1>
+          <p id="userEmailBadge" class="text-blue-200 text-sm"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="abrirModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg shadow transition duration-150 text-sm">
+            + Nuevo Servicio
+          </button>
+          <button onclick="cerrarSesion()" class="bg-blue-800 hover:bg-blue-900 text-white font-semibold px-4 py-2 rounded-lg shadow transition duration-150 text-sm">
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+<!-- RESUMEN MENSUAL -->
+<section class="bg-white rounded-xl shadow-sm p-6 space-y-4">
+
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+    <div>
+      <h2 class="text-lg font-bold text-slate-700">
+        📅 Resumen Mensual
+      </h2>
+      <p class="text-sm text-slate-500">
+        Consultá y guardá el resumen de cada mes.
+      </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-2">
+
+      <select
+        id="selectorMes"
+        onchange="cambiarMesSeleccionado()"
+        class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      ></select>
+
+      <button
+        onclick="guardarResumenMensual()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm"
+      >
+        💾 Guardar resumen
+      </button>
+
+      <button
+        onclick="descargarResumenMensual()"
+        class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg text-sm"
+      >
+        📥 Descargar
+      </button>
+
+    </div>
+
+  </div>
+
+  <div
+    id="mensajeResumenMensual"
+    class="hidden text-sm p-3 rounded-lg"
+  ></div>
+
+</section>
+      <!-- DASHBOARD GENERAL (Calculado sobre todos los servicios del usuario, ignora filtros) -->
+      <section class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Métricas Generales</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 text-center">
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <p class="text-xs text-blue-600 font-semibold uppercase">Hoy</p>
+            <p id="dashHoy" class="text-2xl font-bold text-blue-800">0</p>
+          </div>
+          <div class="bg-amber-50 p-4 rounded-lg border border-amber-100">
+            <p class="text-xs text-amber-600 font-semibold uppercase">Pendientes</p>
+            <p id="dashPendientes" class="text-2xl font-bold text-amber-800">0</p>
+          </div>
+          <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+            <p class="text-xs text-emerald-600 font-semibold uppercase">Realizados</p>
+            <p id="dashRealizados" class="text-2xl font-bold text-emerald-800">0</p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <p class="text-xs text-slate-600 font-semibold uppercase">Total Servicios</p>
+            <p id="dashTotalServicios" class="text-2xl font-bold text-slate-800">0</p>
+          </div>
+          <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <p class="text-xs text-indigo-600 font-semibold uppercase">Total Cobrado</p>
+            <p id="dashCobrado" class="text-xl font-bold text-indigo-800">$0</p>
+          </div>
+          <div class="bg-rose-50 p-4 rounded-lg border border-rose-100">
+            <p class="text-xs text-rose-600 font-semibold uppercase">Pendiente Cobro</p>
+            <p id="dashPendienteCobro" class="text-xl font-bold text-rose-800">$0</p>
+          </div>
+          <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+            <p class="text-xs text-purple-600 font-semibold uppercase">Mantenimientos</p>
+            <p id="dashMantenimientos" class="text-2xl font-bold text-purple-800">0</p>
+          </div> 
+<div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+  <p class="text-xs text-blue-600 font-semibold uppercase">Total para Plomeros</p>
+  <p id="dashPlomeros" class="text-xl font-bold text-blue-800">$0</p>
+</div>
+
+<div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+  <p class="text-xs text-purple-600 font-semibold uppercase">Total Mi Parte</p>
+  <p id="dashMiParte" class="text-xl font-bold text-purple-800">$0</p>
+</div>
+        </div>
+      </section>
+
+      <!-- FILTROS -->
+      <section class="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <h2 class="text-lg font-bold text-slate-700">Filtros de Búsqueda</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div>
+            <label for="filterBusqueda" class="block text-xs font-medium text-slate-600 mb-1">Búsqueda General</label>
+            <input type="text" id="filterBusqueda" placeholder="Cliente, tel, dirección, servicio..." class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label for="filterFecha" class="block text-xs font-medium text-slate-600 mb-1">Fecha</label>
+            <input type="date" id="filterFecha" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label for="filterEstado" class="block text-xs font-medium text-slate-600 mb-1">Estado Servicio</label>
+            <select id="filterEstado" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Confirmado">Confirmado</option>
+              <option value="En proceso">En proceso</option>
+              <option value="Realizado">Realizado</option>
+              <option value="Cancelado">Cancelado</option>
+              <option value="Reprogramado">Reprogramado</option>
+              <option value="Mantenimiento pendiente">Mantenimiento pendiente</option>
+              <option value="Mantenimiento realizado">Mantenimiento realizado</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterPago" class="block text-xs font-medium text-slate-600 mb-1">Estado Pago</label>
+            <select id="filterPago" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Todos</option>
+              <option value="Pagado">Pagado</option>
+              <option value="Pago parcial">Pago parcial</option>
+              <option value="No pagado">No pagado</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterPlomero" class="block text-xs font-medium text-slate-600 mb-1">Plomero</label>
+            <input type="text" id="filterPlomero" placeholder="Nombre plomero" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="limpiarFiltros()" class="text-sm text-slate-500 hover:text-slate-800 underline">Limpiar Filtros</button>
+        </div>
+      </section>
+
+      <!-- TABLA DE SERVICIOS -->
+      <section class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 uppercase text-xs border-b">
+              <tr>
+                <th class="p-4">Fecha / Hora</th>
+                <th class="p-4">Cliente / Tel</th>
+                <th class="p-4">Servicio</th>
+                <th class="p-4">Plomero</th>
+                <th class="p-4">Precio</th>
+                <th class="p-4">Cobrado</th>
+                <th class="p-4">Pendiente</th>
+                <th class="p-4">Estado Servicio</th>
+                <th class="p-4">Estado Pago</th>
+                <th class="p-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaServiciosBody" class="divide-y divide-slate-100">
+              <!-- Render dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR SERVICIO -->
+  <div id="modalServicio" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <h3 id="modalTitle" class="text-xl font-bold text-slate-800 border-b pb-2">Nuevo Servicio</h3>
+      
+      <form id="formServicio" onsubmit="guardarServicio(event)" class="space-y-4">
+        <input type="hidden" id="servicioId">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="cliente" class="block text-xs font-semibold text-slate-600 mb-1">Cliente *</label>
+            <input type="text" id="cliente" required class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="telefono" class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+            <input type="text" id="telefono" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div class="md:col-span-2">
+            <label for="direccion" class="block text-xs font-semibold text-slate-600 mb-1">Dirección</label>
+            <input type="text" id="direccion" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="fecha" class="block text-xs font-semibold text-slate-600 mb-1">Fecha *</label>
+            <input type="date" id="fecha" required class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="hora" class="block text-xs font-semibold text-slate-600 mb-1">Hora</label>
+            <input type="time" id="hora" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="servicio" class="block text-xs font-semibold text-slate-600 mb-1">Servicio *</label>
+            <input type="text" id="servicio" required class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="plomero" class="block text-xs font-semibold text-slate-600 mb-1">Plomero</label>
+            <input type="text" id="plomero" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="precio" class="block text-xs font-semibold text-slate-600 mb-1">Precio Total ($)</label>
+            <input type="number" step="0.01" min="0" id="precio" value="0" oninput="actualizarComportamientoPago(); actualizarReparto()" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div> 
+<div class="md:col-span-2 bg-blue-50 border border-blue-100 rounded-lg p-4">
+  <h4 class="font-semibold text-blue-800 mb-3">Reparto del servicio</h4>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <label for="porcentaje_plomero" class="block text-xs font-semibold text-slate-600 mb-1">
+        Porcentaje del plomero (%)
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="100"
+        step="1"
+        id="porcentaje_plomero"
+        value="70"
+        oninput="actualizarReparto()"
+        class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+      >
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">
+        Mi porcentaje (%)
+      </label>
+      <input
+        type="number"
+        id="porcentaje_mi_parte"
+        value="30"
+        readonly
+        class="w-full border rounded-lg p-2 text-sm bg-slate-100"
+      >
+    </div>
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">
+        Mi parte ($)
+      </label>
+      <input
+        type="text"
+        id="monto_mi_parte"
+        value="$0"
+        readonly
+        class="w-full border rounded-lg p-2 text-sm bg-slate-100 font-semibold"
+      >
+    </div>
+  </div>
+
+  <div class="mt-3 text-sm text-slate-600">
+    <span>Le corresponde al plomero:</span>
+    <strong id="monto_plomero_visual">$0</strong>
+  </div>
+</div>
+          <div>
+            <label for="pago" class="block text-xs font-semibold text-slate-600 mb-1">Estado del Pago</label>
+            <select id="pago" onchange="actualizarComportamientoPago()" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="No pagado">No pagado</option>
+              <option value="Pago parcial">Pago parcial</option>
+              <option value="Pagado">Pagado</option>
+            </select>
+          </div>
+          <div id="contenedorMontoPagado">
+            <label for="monto_pagado" class="block text-xs font-semibold text-slate-600 mb-1">Monto Pagado ($)</label>
+            <input type="number" step="0.01" min="0" id="monto_pagado" value="0" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label for="estado" class="block text-xs font-semibold text-slate-600 mb-1">Estado del Servicio</label>
+            <select id="estado" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="Pendiente">Pendiente</option>
+              <option value="Confirmado">Confirmado</option>
+              <option value="En proceso">En proceso</option>
+              <option value="Realizado">Realizado</option>
+              <option value="Cancelado">Cancelado</option>
+              <option value="Reprogramado">Reprogramado</option>
+              <option value="Mantenimiento pendiente">Mantenimiento pendiente</option>
+              <option value="Mantenimiento realizado">Mantenimiento realizado</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="observaciones" class="block text-xs font-semibold text-slate-600 mb-1">Observaciones</label>
+          <textarea id="observaciones" rows="3" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-4 border-t">
+          <button type="button" onclick="cerrarModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm">Cancelar</button>
+          <button type="submit" id="btnGuardarServicio" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE DEL SERVICIO -->
+  <div id="modalDetalle" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <h3 class="text-xl font-bold text-slate-800 border-b pb-2">Detalle del Servicio</h3>
+      <div id="detalleContenido" class="space-y-2 text-sm text-slate-700">
+        <!-- Render dinámico seguro del detalle -->
+      </div>
+      <div class="flex justify-end pt-4 border-t">
+        <button onclick="cerrarModalDetalle()" class="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-sm font-semibold">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------------------------------
+    // CONFIGURACIÓN DE SUPABASE
+    // ----------------------------------------------------
+    const SUPABASE_URL = 'https://svoiammmdozopcwkmugu.supabase.co';
+    
+    // REEMPLAZA ÚNICAMENTE ESTA VARIABLE CON TU CLAVE PÚBLICA (ANON / PUBLISHABLE KEY)
+    // NUNCA UTILICES LA SERVICE_ROLE NI SECRET KEY
+    const SUPABASE_KEY = 'sb_publishable_KSOnO6sPeYaRuFVTbdOHrQ_xq4QzBXw';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Estado global de la aplicación
+    let todosLosServicios = [];
+    let usuarioActual = null;
+
+    // ----------------------------------------------------
+    // UTILIDAD DE SEGURIDAD (SANITIZACIÓN XSS)
+    // ----------------------------------------------------
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Mostrar un error visible en la UI
+    function mostrarErrorGlobal(mensaje) {
+      const banner = document.getElementById('globalError');
+      const textNode = document.getElementById('globalErrorText');
+      textNode.textContent = mensaje;
+      banner.classList.remove('hidden');
+    }
+
+    function cerrarGlobalError() {
+      document.getElementById('globalError').classList.add('hidden');
+    }
+
+    // ----------------------------------------------------
+    // AUXILIAR: FECHA HOY EN ZONA HORARIA DE ARGENTINA (America/Argentina/Buenos_Aires)
+    // ----------------------------------------------------
+    function obtenerFechaHoyArgentina() {
+      const opciones = { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' };
+      const partes = new Intl.DateTimeFormat('en-CA', opciones).formatToParts(new Date());
+      const y = partes.find(p => p.type === 'year').value;
+      const m = partes.find(p => p.type === 'month').value;
+      const d = partes.find(p => p.type === 'day').value;
+      return `${y}-${m}-${d}`;
+    }
+
+    // ----------------------------------------------------
+    // INICIALIZACIÓN Y CONTROL DE SESIÓN
+    // ----------------------------------------------------
+    document.addEventListener('DOMContentLoaded', () => {
+      // Escuchar cambios de autenticación (Login, Logout, Expira token)
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+
+  if (event === 'PASSWORD_RECOVERY') {
+    usuarioActual = session?.user || null;
+
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.add('hidden');
+    document.getElementById('resetPasswordScreen').classList.remove('hidden');
+
+    return;
+  }
+
+  if (event === 'SIGNED_OUT' || !session) {
+    usuarioActual = null;
+
+    document.getElementById('resetPasswordScreen').classList.add('hidden');
+    mostrarLogin();
+
+  } else if (session) {
+
+    const nuevoUser = session.user;
+
+    if (!usuarioActual || usuarioActual.id !== nuevoUser.id) {
+      usuarioActual = nuevoUser;
+
+      document.getElementById('resetPasswordScreen').classList.add('hidden');
+      mostrarApp(usuarioActual);
+    }
+  }
+});
+
+      // Eventos de filtros en tiempo real
+      document.getElementById('filterBusqueda').addEventListener('input', aplicarFiltrosYRenderizar);
+      document.getElementById('filterFecha').addEventListener('change', aplicarFiltrosYRenderizar);
+      document.getElementById('filterEstado').addEventListener('change', aplicarFiltrosYRenderizar);
+      document.getElementById('filterPago').addEventListener('change', aplicarFiltrosYRenderizar);
+      document.getElementById('filterPlomero').addEventListener('input', aplicarFiltrosYRenderizar);
+    });
+
+    function mostrarLogin() {
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+      todosLosServicios = [];
+      cerrarGlobalError();
+    }
+
+    function mostrarApp(user) {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+      document.getElementById('userEmailBadge').textContent = escapeHtml(user.email || '');
+      cargarServicios();
+    }
+
+    // ----------------------------------------------------
+        // ----------------------------------------------------
+    // AUTH: LOGIN, RECUPERACIÓN DE CONTRASEÑA Y LOGOUT
+    // ----------------------------------------------------
+    async function iniciarSesion(e) {
+      e.preventDefault();
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errBox = document.getElementById('loginError');
+      const btn = document.getElementById('btnLoginSubmit');
+
+      errBox.classList.add('hidden');
+      errBox.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Ingresando...';
+
+      try {
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+      } catch (err) {
+        errBox.textContent =
+          'Error de autenticación: ' +
+          (err.message || 'Credenciales inválidas o falla de conexión.');
+
+        errBox.classList.remove('hidden');
+
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ingresar';
+      }
+    }
+
+    async function recuperarContrasena() {
+      const email = document.getElementById('loginEmail').value.trim();
+
+      if (!email) {
+        alert('Primero ingresá tu correo electrónico.');
+        document.getElementById('loginEmail').focus();
+        return;
+      }
+
+      try {
+        const { error } =
+          await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: 'https://altoque-spec.github.io/gestionplomeria/'
+          });
+
+        if (error) throw error;
+
+        alert(
+          'Te enviamos un correo para restablecer tu contraseña. ' +
+          'Revisá también Spam o Correo no deseado.'
+        );
+
+      } catch (err) {
+        alert(
+          'No se pudo enviar el correo: ' +
+          (err.message || 'Error desconocido.')
+        );
+      }
+    }
+async function cambiarContrasena() {
+  const nuevaPassword = document.getElementById('nuevaPassword').value;
+  const confirmarPassword = document.getElementById('confirmarPassword').value;
+  const errorBox = document.getElementById('resetPasswordError');
+  const btn = document.getElementById('btnCambiarPassword');
+
+  errorBox.classList.add('hidden');
+  errorBox.textContent = '';
+
+  if (nuevaPassword.length < 6) {
+    errorBox.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
+  if (nuevaPassword !== confirmarPassword) {
+    errorBox.textContent = 'Las contraseñas no coinciden.';
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const { error } = await supabaseClient.auth.updateUser({
+      password: nuevaPassword
+    });
+
+    if (error) throw error;
+
+    alert('¡Contraseña cambiada correctamente! Ahora podés ingresar con tu nueva contraseña.');
+
+    await supabaseClient.auth.signOut();
+
+    document.getElementById('resetPasswordScreen').classList.add('hidden');
+    mostrarLogin();
+
+  } catch (err) {
+
+    errorBox.textContent =
+      'No se pudo cambiar la contraseña: ' +
+      (err.message || 'Error desconocido.');
+
+    errorBox.classList.remove('hidden');
+
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Cambiar contraseña';
+  }
+}
+    async function cerrarSesion() {
+      const { error } = await supabaseClient.auth.signOut();
+
+      if (error) {
+        console.error('Error al cerrar sesión:', error.message);
+      }
+    }
+    // ----------------------------------------------------
+    function calcularMontosCobranza(precioInput, montoPagadoInput, estadoPago) {
+      let precio = parseFloat(precioInput) || 0;
+      if (precio < 0) precio = 0;
+
+      let cobrado = parseFloat(montoPagadoInput) || 0;
+
+      if (estadoPago === 'Pagado') {
+        cobrado = precio;
+      } else if (estadoPago === 'No pagado') {
+        cobrado = 0;
+      } else if (estadoPago === 'Pago parcial') {
+        // Validación estricta: 0 <= cobrado <= precio
+        if (cobrado > precio) cobrado = precio;
+        if (cobrado < 0) cobrado = 0;
+      }
+
+      const pendiente = Math.max(0, precio - cobrado);
+      return { precio, cobrado, pendiente };
+    }
+function actualizarReparto() {
+  const precio = parseFloat(document.getElementById('precio').value) || 0;
+
+  let porcentajePlomero =
+    parseFloat(document.getElementById('porcentaje_plomero').value);
+
+  if (isNaN(porcentajePlomero)) porcentajePlomero = 0;
+
+  if (porcentajePlomero < 0) porcentajePlomero = 0;
+  if (porcentajePlomero > 100) porcentajePlomero = 100;
+
+  document.getElementById('porcentaje_plomero').value = porcentajePlomero;
+
+  const porcentajeMiParte = 100 - porcentajePlomero;
+
+  const montoPlomero = precio * porcentajePlomero / 100;
+  const montoMiParte = precio * porcentajeMiParte / 100;
+
+  document.getElementById('porcentaje_mi_parte').value =
+    porcentajeMiParte;
+
+  document.getElementById('monto_plomero_visual').textContent =
+    '$' + montoPlomero.toLocaleString('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+  document.getElementById('monto_mi_parte').value =
+    '$' + montoMiParte.toLocaleString('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+}
+    function actualizarComportamientoPago() {
+      const estadoPago = document.getElementById('pago').value;
+      const precioVal = parseFloat(document.getElementById('precio').value) || 0;
+      const inputMonto = document.getElementById('monto_pagado');
+      const contenedor = document.getElementById('contenedorMontoPagado');
+
+      if (estadoPago === 'Pagado') {
+        inputMonto.value = precioVal >= 0 ? precioVal : 0;
+        inputMonto.disabled = true;
+        contenedor.style.opacity = '0.6';
+      } else if (estadoPago === 'No pagado') {
+        inputMonto.value = 0;
+        inputMonto.disabled = true;
+        contenedor.style.opacity = '0.6';
+      } else { // Pago parcial
+        inputMonto.disabled = false;
+        contenedor.style.opacity = '1';
+      }
+    }
+
+    // ----------------------------------------------------
+    // OBTENCIÓN DE DATOS (SUPABASE)
+    // ----------------------------------------------------
+    async function cargarServicios() {
+      try {
+        // Las políticas RLS en Supabase filtran automáticamente según auth.uid()
+        const { data, error } = await supabaseClient
+          .from('servicios')
+          .select('*')
+          .order('fecha', { ascending: false });
+
+        if (error) throw error;
+
+        todosLosServicios = data || [];
+
+if (!anioMesSeleccionado) {
+  inicializarSelectorMes();
+} else {
+  const selector = document.getElementById('selectorMes');
+  if (selector) selector.value = anioMesSeleccionado;
+}
+
+actualizarDashboardMesSeleccionado();
+
+aplicarFiltrosYRenderizar();
+      } catch (err) {
+        console.error('Error al cargar servicios:', err.message);
+        mostrarErrorGlobal('Error al consultar la base de datos o sesión expirada. Intente recargar.');
+      }
+    }
+
+    // ----------------------------------------------------
+    // MÉTRICAS DEL DASHBOARD (INDEPENDIENTES DE FILTROS)
+    // ----------------------------------------------------
+    function actualizarDashboard(servicios) {
+      const hoyArgentinaStr = obtenerFechaHoyArgentina();
+
+      let hoyCount = 0;
+      let pendientesCount = 0;
+      let realizadosCount = 0;
+      let totalServiciosCount = servicios.length;
+      let totalCobrado = 0;
+      let totalPendienteCobro = 0;
+      let mantenimientosCount = 0;
+      let totalPlomeros = 0;
+      let totalMiParte = 0;
+
+      servicios.forEach(s => {
+        const { cobrado, pendiente } = calcularMontosCobranza(s.precio, s.monto_pagado, s.pago);
+const precioServicio = parseFloat(s.precio) || 0;
+
+const porcentajePlomero = parseFloat(s.porcentaje_plomero);
+const porcentajeMiParte = parseFloat(s.porcentaje_mi_parte);
+
+const porcentajeP = Number.isFinite(porcentajePlomero)
+  ? porcentajePlomero
+  : 70;
+
+const porcentajeM = Number.isFinite(porcentajeMiParte)
+  ? porcentajeMiParte
+  : (100 - porcentajeP);
+
+totalPlomeros += precioServicio * porcentajeP / 100;
+totalMiParte += precioServicio * porcentajeM / 100;
+
+        if (s.fecha === hoyArgentinaStr) hoyCount++;
+        if (s.estado === 'Pendiente') pendientesCount++;
+        if (s.estado === 'Realizado') realizadosCount++;
+
+        if (s.estado === 'Mantenimiento pendiente' || s.estado === 'Mantenimiento realizado') {
+          mantenimientosCount++;
+        }
+
+        totalCobrado += cobrado;
+        totalPendienteCobro += pendiente;
+      });
+
+      document.getElementById('dashHoy').textContent = hoyCount;
+      document.getElementById('dashPendientes').textContent = pendientesCount;
+      document.getElementById('dashRealizados').textContent = realizadosCount;
+      document.getElementById('dashTotalServicios').textContent = totalServiciosCount;
+      document.getElementById('dashCobrado').textContent = `$${totalCobrado.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('dashPendienteCobro').textContent = `$${totalPendienteCobro.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('dashMantenimientos').textContent = mantenimientosCount;
+document.getElementById('dashPlomeros').textContent =
+  `$${totalPlomeros.toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+
+document.getElementById('dashMiParte').textContent =
+  `$${totalMiParte.toLocaleString('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+    }
+
+    // ----------------------------------------------------
+    // FILTRADO Y RENDERIZADO EN TABLA
+    // ----------------------------------------------------
+function aplicarFiltrosYRenderizar() {
+  const busqueda = document.getElementById('filterBusqueda').value.toLowerCase().trim();
+  const fecha = document.getElementById('filterFecha').value;
+  const estado = document.getElementById('filterEstado').value;
+  const pago = document.getElementById('filterPago').value;
+  const plomero = document.getElementById('filterPlomero').value.toLowerCase().trim();
+
+  const filtrados = todosLosServicios.filter(s => {
+
+    // Filtrar por el mes seleccionado
+    const matchMes =
+      !anioMesSeleccionado ||
+      (s.fecha && s.fecha.startsWith(anioMesSeleccionado));
+
+    const matchBusqueda =
+      !busqueda ||
+      (s.cliente && s.cliente.toLowerCase().includes(busqueda)) ||
+      (s.telefono && s.telefono.toLowerCase().includes(busqueda)) ||
+      (s.direccion && s.direccion.toLowerCase().includes(busqueda)) ||
+      (s.servicio && s.servicio.toLowerCase().includes(busqueda)) ||
+      (s.plomero && s.plomero.toLowerCase().includes(busqueda));
+
+    const matchFecha =
+      !fecha || s.fecha === fecha;
+
+    const matchEstado =
+      !estado || s.estado === estado;
+
+    const matchPago =
+      !pago || s.pago === pago;
+
+    const matchPlomero =
+      !plomero ||
+      (s.plomero && s.plomero.toLowerCase().includes(plomero));
+
+    return (
+      matchMes &&
+      matchBusqueda &&
+      matchFecha &&
+      matchEstado &&
+      matchPago &&
+      matchPlomero
+    );
+  });
+
+  renderizarTabla(filtrados);
+} 
+
+
+function renderizarTabla(lista) {
+      const tbody = document.getElementById('tablaServiciosBody');
+      tbody.innerHTML = '';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400">No se encontraron servicios.</td></tr>`;
+        return;
+      }
+
+      lista.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        const { precio, cobrado, pendiente } = calcularMontosCobranza(s.precio, s.monto_pagado, s.pago);
+
+        tr.innerHTML = `
+          <td class="p-4 whitespace-nowrap">
+            <div class="font-semibold text-slate-800">${escapeHtml(s.fecha || '-')}</div>
+            <div class="text-xs text-slate-400">${escapeHtml(s.hora || '')}</div>
+          </td>
+          <td class="p-4">
+            <div class="font-semibold text-slate-800">${escapeHtml(s.cliente || '-')}</div>
+            <div class="text-xs text-slate-500">${escapeHtml(s.telefono || '')}</div>
+          </td>
+          <td class="p-4">${escapeHtml(s.servicio || '-')}</td>
+          <td class="p-4">${escapeHtml(s.plomero || '-')}</td>
+          <td class="p-4 font-medium whitespace-nowrap">$${precio.toFixed(2)}</td>
+          <td class="p-4 font-medium text-emerald-600 whitespace-nowrap">$${cobrado.toFixed(2)}</td>
+          <td class="p-4 font-medium text-rose-600 whitespace-nowrap">$${pendiente.toFixed(2)}</td>
+          <td class="p-4 whitespace-nowrap">
+            <select onchange="cambiarEstadoDirecto('${escapeHtml(s.id)}', 'estado', this.value)" class="text-xs rounded-full px-2 py-1 font-semibold border-0 ${getEstiloEstado(s.estado)} cursor-pointer outline-none">
+              ${opcionesEstadoServicio(s.estado)}
+            </select>
+          </td>
+          <td class="p-4 whitespace-nowrap">
+            <select onchange="cambiarEstadoPagoDirecto('${escapeHtml(s.id)}', this.value)" class="text-xs rounded-full px-2 py-1 font-semibold border-0 ${getEstiloPago(s.pago)} cursor-pointer outline-none">
+              ${opcionesEstadoPago(s.pago)}
+            </select>
+          </td>
+          <td class="p-4 text-center whitespace-nowrap space-x-1">
+            <button onclick="verDetalle('${escapeHtml(s.id)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-semibold">Ver</button>
+            <button onclick="editarServicio('${escapeHtml(s.id)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-semibold">Editar</button>
+            <button onclick="eliminarServicio('${escapeHtml(s.id)}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1 rounded text-xs font-semibold">Eliminar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function limpiarFiltros() {
+      document.getElementById('filterBusqueda').value = '';
+      document.getElementById('filterFecha').value = '';
+      document.getElementById('filterEstado').value = '';
+      document.getElementById('filterPago').value = '';
+      document.getElementById('filterPlomero').value = '';
+      aplicarFiltrosYRenderizar();
+    }
+
+    function opcionesEstadoServicio(actual) {
+      const estados = [
+        'Pendiente', 'Confirmado', 'En proceso', 'Realizado', 
+        'Cancelado', 'Reprogramado', 'Mantenimiento pendiente', 'Mantenimiento realizado'
+      ];
+      return estados.map(e => `<option value="${escapeHtml(e)}" ${e === actual ? 'selected' : ''}>${escapeHtml(e)}</option>`).join('');
+    }
+
+    function opcionesEstadoPago(actual) {
+      const pagos = ['No pagado', 'Pago parcial', 'Pagado'];
+      return pagos.map(p => `<option value="${escapeHtml(p)}" ${p === actual ? 'selected' : ''}>${escapeHtml(p)}</option>`).join('');
+    }
+
+    function getEstiloEstado(estado) {
+      const estilos = {
+        'Pendiente': 'bg-amber-100 text-amber-800',
+        'Confirmado': 'bg-blue-100 text-blue-800',
+        'En proceso': 'bg-indigo-100 text-indigo-800',
+        'Realizado': 'bg-emerald-100 text-emerald-800',
+        'Cancelado': 'bg-rose-100 text-rose-800',
+        'Reprogramado': 'bg-orange-100 text-orange-800',
+        'Mantenimiento pendiente': 'bg-purple-100 text-purple-800',
+        'Mantenimiento realizado': 'bg-teal-100 text-teal-800'
+      };
+      return estilos[estado] || 'bg-slate-100 text-slate-800';
+    }
+
+    function getEstiloPago(pago) {
+      const estilos = {
+        'Pagado': 'bg-emerald-100 text-emerald-800',
+        'Pago parcial': 'bg-amber-100 text-amber-800',
+        'No pagado': 'bg-rose-100 text-rose-800'
+      };
+      return estilos[pago] || 'bg-slate-100 text-slate-800';
+    }
+
+    // ----------------------------------------------------
+    // ACCIONES RÁPIDAS EN TABLA
+    // ----------------------------------------------------
+    async function cambiarEstadoDirecto(id, campo, nuevoValor) {
+      try {
+        const { error } = await supabaseClient
+          .from('servicios')
+          .update({ [campo]: nuevoValor })
+          .eq('id', id);
+
+        if (error) throw error;
+        await cargarServicios();
+      } catch (err) {
+        alert('Error al actualizar el estado: ' + err.message);
+        await cargarServicios();
+      }
+    }
+
+    async function cambiarEstadoPagoDirecto(id, nuevoEstadoPago) {
+      const s = todosLosServicios.find(item => String(item.id) === String(id));
+      if (!s) return;
+
+      const precio = parseFloat(s.precio) || 0;
+      let nuevoMonto = s.monto_pagado;
+
+      if (nuevoEstadoPago === 'Pagado') {
+        nuevoMonto = precio;
+      } else if (nuevoEstadoPago === 'No pagado') {
+        nuevoMonto = 0;
+      } else if (nuevoEstadoPago === 'Pago parcial') {
+        const ingreso = prompt(`Ingrese el monto pagado (Entre $0 y $${precio.toFixed(2)}):`, s.monto_pagado || 0);
+        if (ingreso === null) {
+          await cargarServicios();
+          return;
+        }
+        let val = parseFloat(ingreso) || 0;
+        if (val < 0) val = 0;
+        if (val > precio) val = precio;
+        nuevoMonto = val;
+      }
+
+      try {
+        const { error } = await supabaseClient
+          .from('servicios')
+          .update({
+            pago: nuevoEstadoPago,
+            monto_pagado: nuevoMonto
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+        await cargarServicios();
+      } catch (err) {
+        alert('Error al actualizar el pago: ' + err.message);
+        await cargarServicios();
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODAL FORMULARIO: CREAR Y EDITAR
+    // ----------------------------------------------------
+    function abrirModal() {
+      document.getElementById('formServicio').reset();
+      document.getElementById('servicioId').value = '';
+      document.getElementById('precio').value = 0;
+      document.getElementById('monto_pagado').value = 0;
+      document.getElementById('porcentaje_plomero').value = 70;
+      document.getElementById('porcentaje_mi_parte').value = 30;
+      actualizarReparto();
+      document.getElementById('pago').value = 'No pagado';
+      document.getElementById('fecha').value = obtenerFechaHoyArgentina();
+      document.getElementById('modalTitle').textContent = 'Nuevo Servicio';
+      actualizarComportamientoPago();
+      document.getElementById('modalServicio').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modalServicio').classList.add('hidden');
+    }
+
+    function editarServicio(id) {
+      const s = todosLosServicios.find(item => String(item.id) === String(id));
+      if (!s) return;
+
+      document.getElementById('servicioId').value = s.id;
+      document.getElementById('cliente').value = s.cliente || '';
+      document.getElementById('telefono').value = s.telefono || '';
+      document.getElementById('direccion').value = s.direccion || '';
+      document.getElementById('fecha').value = s.fecha || '';
+      document.getElementById('hora').value = s.hora || '';
+      document.getElementById('servicio').value = s.servicio || '';
+      document.getElementById('plomero').value = s.plomero || '';
+      document.getElementById('precio').value = s.precio ?? 0;
+
+document.getElementById('porcentaje_plomero').value =
+  s.porcentaje_plomero ?? 70;
+
+document.getElementById('porcentaje_mi_parte').value =
+  s.porcentaje_mi_parte ?? 30;
+
+actualizarReparto();
+
+document.getElementById('pago').value = s.pago || 'No pagado';
+      document.getElementById('monto_pagado').value = s.monto_pagado ?? 0;
+      document.getElementById('estado').value = s.estado || 'Pendiente';
+      document.getElementById('observaciones').value = s.observaciones || '';
+
+      document.getElementById('modalTitle').textContent = 'Editar Servicio';
+      actualizarComportamientoPago();
+      document.getElementById('modalServicio').classList.remove('hidden');
+    }
+
+    async function guardarServicio(e) {
+      e.preventDefault();
+
+      if (!usuarioActual) {
+        alert('Sesión no encontrada o expirada. Por favor, vuelve a ingresar.');
+        mostrarLogin();
+        return;
+      }
+
+      const btn = document.getElementById('btnGuardarServicio');
+      btn.disabled = true;
+
+      const id = document.getElementById('servicioId').value;
+      const estadoPago = document.getElementById('pago').value;
+      const precioInput = parseFloat(document.getElementById('precio').value) || 0;
+      const montoPagadoInput = parseFloat(document.getElementById('monto_pagado').value) || 0;
+
+      // Cálculo y validación estricta (0 <= cobrado <= precio)
+      const { precio, cobrado } = calcularMontosCobranza(precioInput, montoPagadoInput, estadoPago);
+
+      const payload = {
+        cliente: document.getElementById('cliente').value.trim(),
+        telefono: document.getElementById('telefono').value.trim(),
+        direccion: document.getElementById('direccion').value.trim(),
+        fecha: document.getElementById('fecha').value,
+        hora: document.getElementById('hora').value,
+        servicio: document.getElementById('servicio').value.trim(),
+        plomero: document.getElementById('plomero').value.trim(),
+         precio: precio,
+porcentaje_plomero: parseFloat(document.getElementById('porcentaje_plomero').value) || 0,
+porcentaje_mi_parte: 100 - (parseFloat(document.getElementById('porcentaje_plomero').value) || 0),
+pago: estadoPago,       monto_pagado: cobrado,
+        estado: document.getElementById('estado').value,
+        observaciones: document.getElementById('observaciones').value.trim()
+      };
+
+      // Si es un nuevo servicio, adjuntar user_id del usuario autenticado
+      if (!id) {
+        payload.user_id = usuarioActual.id;
+      }
+
+      try {
+        let error;
+        if (id) {
+          const res = await supabaseClient
+            .from('servicios')
+            .update(payload)
+            .eq('id', id);
+          error = res.error;
+        } else {
+          const res = await supabaseClient
+            .from('servicios')
+            .insert([payload]);
+          error = res.error;
+        }
+
+        if (error) throw error;
+
+        cerrarModal();
+        await cargarServicios();
+      } catch (err) {
+        console.error('Error al guardar:', err.message);
+        alert('Ocurrió un error al guardar el servicio: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ----------------------------------------------------
+    // ELIMINAR Y DETALLE
+    // ----------------------------------------------------
+    async function eliminarServicio(id) {
+      if (!confirm('¿Seguro que deseas eliminar este servicio?')) return;
+
+      try {
+        const { error } = await supabaseClient
+          .from('servicios')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        await cargarServicios();
+      } catch (err) {
+        console.error('Error al eliminar:', err.message);
+        alert('Error al eliminar el servicio: ' + err.message);
+      }
+    }
+
+    function verDetalle(id) {
+      const s = todosLosServicios.find(item => String(item.id) === String(id));
+      if (!s) return;
+
+      const { precio, cobrado, pendiente } = calcularMontosCobranza(s.precio, s.monto_pagado, s.pago);
+const porcentajePlomero = parseFloat(s.porcentaje_plomero) || 0;
+const porcentajeMiParte = parseFloat(s.porcentaje_mi_parte) || (100 - porcentajePlomero);
+
+const montoPlomero = parseFloat(s.monto_plomero) || (precio * porcentajePlomero / 100);
+const montoMiParte = parseFloat(s.monto_mi_parte) || (precio * porcentajeMiParte / 100);
+      const html = `
+        <div class="grid grid-cols-2 gap-2">
+          <p><strong>Cliente:</strong> ${escapeHtml(s.cliente || '-')}</p>
+          <p><strong>Teléfono:</strong> ${escapeHtml(s.telefono || '-')}</p>
+        </div>
+        <p><strong>Dirección:</strong> ${escapeHtml(s.direccion || '-')}</p>
+        <p><strong>Fecha y Hora:</strong> ${escapeHtml(s.fecha || '-')} ${s.hora ? '| ' + escapeHtml(s.hora) : ''}</p>
+        <p><strong>Servicio:</strong> ${escapeHtml(s.servicio || '-')}</p>
+        <p><strong>Plomero:</strong> ${escapeHtml(s.plomero || '-')}</p>
+        <div class="grid grid-cols-2 gap-2">
+          <p><strong>Estado Servicio:</strong> ${escapeHtml(s.estado || '-')}</p>
+          <p><strong>Estado Pago:</strong> ${escapeHtml(s.pago || '-')}</p>
+        </div>
+        <hr class="my-2 border-slate-200">
+        <div class="bg-slate-50 p-3 rounded-lg space-y-1">
+  <p class="flex justify-between">
+    <span>Precio Total:</span>
+    <strong>$${precio.toFixed(2)}</strong>
+  </p>
+
+  <hr class="my-2 border-slate-200">
+
+  <p class="flex justify-between text-blue-700">
+    <span>Plomero (${porcentajePlomero}%):</span>
+    <strong>$${montoPlomero.toFixed(2)}</strong>
+  </p>
+
+  <p class="flex justify-between text-purple-700">
+    <span>Mi parte (${porcentajeMiParte}%):</span>
+    <strong>$${montoMiParte.toFixed(2)}</strong>
+  </p>
+
+  <hr class="my-2 border-slate-200">
+
+  <p class="flex justify-between text-emerald-700">
+    <span>Cobrado:</span>
+    <strong>$${cobrado.toFixed(2)}</strong>
+  </p>
+
+  <p class="flex justify-between text-rose-700">
+    <span>Pendiente por cobrar:</span>
+    <strong>$${pendiente.toFixed(2)}</strong>
+  </p>
+</div>
+        <hr class="my-2 border-slate-200">
+        <p><strong>Observaciones:</strong></p>
+        <p class="text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 whitespace-pre-wrap">${escapeHtml(s.observaciones || 'Sin observaciones.')}</p>
+      `;
+
+      document.getElementById('detalleContenido').innerHTML = html;
+      document.getElementById('modalDetalle').classList.remove('hidden');
+    }
+
+    function cerrarModalDetalle() {
+      document.getElementById('modalDetalle').classList.add('hidden');
+    }
+
+    // ====================================================
+    // GESTIÓN DE RESÚMENES MENSUALES
+    // ====================================================
+
+    let anioMesSeleccionado = null;
+
+    // Obtener año y mes actual de Argentina
+    function obtenerMesActualArgentina() {
+      const fecha = new Date();
+
+      const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit'
+      }).formatToParts(fecha);
+
+      const anio = partes.find(p => p.type === 'year').value;
+      const mes = partes.find(p => p.type === 'month').value;
+
+      return `${anio}-${mes}`;
+    }
+
+    // Inicializar selector de meses
+    function inicializarSelectorMes() {
+
+      const selector = document.getElementById('selectorMes');
+
+      if (!selector) return;
+
+      const mesActual = obtenerMesActualArgentina();
+
+      const [anioActual, mesActualNumero] =
+        mesActual.split('-').map(Number);
+
+      selector.innerHTML = '';
+
+      // Mostrar últimos 24 meses
+      for (let i = 0; i < 24; i++) {
+
+        const fecha = new Date(
+          anioActual,
+          mesActualNumero - 1 - i,
+          1
+        );
+
+        const anio = fecha.getFullYear();
+        const mes = fecha.getMonth() + 1;
+
+        const valor =
+          `${anio}-${String(mes).padStart(2, '0')}`;
+
+        const nombreMes =
+          fecha.toLocaleDateString('es-AR', {
+            month: 'long',
+            year: 'numeric'
+          });
+
+        const option =
+          document.createElement('option');
+
+        option.value = valor;
+
+        option.textContent =
+          nombreMes.charAt(0).toUpperCase() +
+          nombreMes.slice(1);
+
+        selector.appendChild(option);
+      }
+
+      selector.value = mesActual;
+
+      anioMesSeleccionado = mesActual;
+    }
+
+    // Cambiar mes seleccionado
+    function cambiarMesSeleccionado() {
+
+      const selector =
+        document.getElementById('selectorMes');
+
+      if (!selector) return;
+
+      anioMesSeleccionado = selector.value;
+
+      actualizarDashboardMesSeleccionado();
+
+      aplicarFiltrosYRenderizar();
+    }
+
+    // Obtener servicios del mes seleccionado
+    function obtenerServiciosDelMes() {
+
+      if (!anioMesSeleccionado) {
+        anioMesSeleccionado =
+          obtenerMesActualArgentina();
+      }
+
+      return todosLosServicios.filter(s => {
+
+        if (!s.fecha) return false;
+
+        return s.fecha.startsWith(
+          anioMesSeleccionado
+        );
+
+      });
+    }
+
+    // Actualizar dashboard según el mes
+    function actualizarDashboardMesSeleccionado() {
+
+      const serviciosMes =
+        obtenerServiciosDelMes();
+
+      actualizarDashboard(serviciosMes);
+    }
+
+    // ====================================================
+    // GUARDAR RESUMEN MENSUAL
+    // ====================================================
+
+    async function guardarResumenMensual() {
+
+      if (!usuarioActual) {
+        alert('Sesión no encontrada.');
+        return;
+      }
+
+      if (!anioMesSeleccionado) {
+        alert('Seleccioná un mes.');
+        return;
+      }
+
+      const servicios =
+        obtenerServiciosDelMes();
+
+      const [anio, mes] =
+        anioMesSeleccionado.split('-').map(Number);
+
+      let totalCobrado = 0;
+      let totalPendiente = 0;
+      let totalPlomeros = 0;
+      let totalMiParte = 0;
+
+      let realizados = 0;
+      let pendientes = 0;
+      let mantenimientos = 0;
+
+      servicios.forEach(s => {
+
+        const resultado =
+          calcularMontosCobranza(
+            s.precio,
+            s.monto_pagado,
+            s.pago
+          );
+
+        const cobrado =
+          resultado.cobrado;
+
+        const pendiente =
+          resultado.pendiente;
+
+        const precio =
+          parseFloat(s.precio) || 0;
+
+        let porcentajePlomero =
+          parseFloat(s.porcentaje_plomero);
+
+        if (!Number.isFinite(porcentajePlomero)) {
+          porcentajePlomero = 70;
+        }
+
+        let porcentajeMiParte =
+          parseFloat(s.porcentaje_mi_parte);
+
+        if (!Number.isFinite(porcentajeMiParte)) {
+          porcentajeMiParte =
+            100 - porcentajePlomero;
+        }
+
+        totalCobrado += cobrado;
+        totalPendiente += pendiente;
+
+        totalPlomeros +=
+          precio * porcentajePlomero / 100;
+
+        totalMiParte +=
+          precio * porcentajeMiParte / 100;
+
+        if (s.estado === 'Realizado') {
+          realizados++;
+        }
+
+        if (s.estado === 'Pendiente') {
+          pendientes++;
+        }
+
+        if (
+          s.estado === 'Mantenimiento pendiente' ||
+          s.estado === 'Mantenimiento realizado'
+        ) {
+          mantenimientos++;
+        }
+
+      });
+
+      const resumen = {
+
+        user_id: usuarioActual.id,
+
+        anio: anio,
+
+        mes: mes,
+
+        total_servicios: servicios.length,
+
+        servicios_realizados: realizados,
+
+        servicios_pendientes: pendientes,
+
+        total_cobrado: totalCobrado,
+
+        total_pendiente: totalPendiente,
+
+        total_plomeros: totalPlomeros,
+
+        total_mi_parte: totalMiParte,
+
+        total_mantenimientos: mantenimientos,
+
+        fecha_guardado:
+          new Date().toISOString()
+
+      };
+
+      try {
+
+        const { error } =
+          await supabaseClient
+            .from('resumenes_mensuales')
+            .upsert(
+              resumen,
+              {
+                onConflict:
+                  'user_id,anio,mes'
+              }
+            );
+
+        if (error) throw error;
+
+        mostrarMensajeResumen(
+          '✅ El resumen del mes fue guardado correctamente.',
+          'success'
+        );
+
+      } catch (error) {
+
+        console.error(
+          'Error guardando resumen:',
+          error.message
+        );
+
+        mostrarMensajeResumen(
+          '❌ No se pudo guardar el resumen: ' +
+          error.message,
+          'error'
+        );
+      }
+    }
+
+    // ====================================================
+    // MENSAJE
+    // ====================================================
+
+    function mostrarMensajeResumen(
+      mensaje,
+      tipo
+    ) {
+
+      const elemento =
+        document.getElementById(
+          'mensajeResumenMensual'
+        );
+
+      if (!elemento) return;
+
+      elemento.textContent = mensaje;
+
+      elemento.className =
+        'text-sm p-3 rounded-lg';
+
+      if (tipo === 'success') {
+
+        elemento.classList.add(
+          'bg-emerald-50',
+          'text-emerald-700',
+          'border',
+          'border-emerald-200'
+        );
+
+      } else {
+
+        elemento.classList.add(
+          'bg-rose-50',
+          'text-rose-700',
+          'border',
+          'border-rose-200'
+        );
+      }
+
+      setTimeout(() => {
+
+        elemento.classList.add('hidden');
+
+      }, 4000);
+    }
+
+    // ====================================================
+    // DESCARGAR RESUMEN MENSUAL
+    // ====================================================
+
+    function descargarResumenMensual() {
+
+      if (!anioMesSeleccionado) {
+        alert('Seleccioná un mes.');
+        return;
+      }
+
+      const servicios =
+        obtenerServiciosDelMes();
+
+      const [anio, mes] =
+        anioMesSeleccionado.split('-').map(Number);
+
+      let totalCobrado = 0;
+      let totalPendiente = 0;
+      let totalPlomeros = 0;
+      let totalMiParte = 0;
+
+      let realizados = 0;
+      let pendientes = 0;
+      let mantenimientos = 0;
+
+      servicios.forEach(s => {
+
+        const resultado =
+          calcularMontosCobranza(
+            s.precio,
+            s.monto_pagado,
+            s.pago
+          );
+
+        const cobrado =
+          resultado.cobrado;
+
+        const pendiente =
+          resultado.pendiente;
+
+        const precio =
+          parseFloat(s.precio) || 0;
+
+        let porcentajePlomero =
+          parseFloat(s.porcentaje_plomero);
+
+        if (!Number.isFinite(porcentajePlomero)) {
+          porcentajePlomero = 70;
+        }
+
+        let porcentajeMiParte =
+          parseFloat(s.porcentaje_mi_parte);
+
+        if (!Number.isFinite(porcentajeMiParte)) {
+          porcentajeMiParte =
+            100 - porcentajePlomero;
+        }
+
+        totalCobrado += cobrado;
+        totalPendiente += pendiente;
+
+        totalPlomeros +=
+          precio * porcentajePlomero / 100;
+
+        totalMiParte +=
+          precio * porcentajeMiParte / 100;
+
+        if (s.estado === 'Realizado') {
+          realizados++;
+        }
+
+        if (s.estado === 'Pendiente') {
+          pendientes++;
+        }
+
+        if (
+          s.estado === 'Mantenimiento pendiente' ||
+          s.estado === 'Mantenimiento realizado'
+        ) {
+          mantenimientos++;
+        }
+
+      });
+
+      const fechaMes =
+        new Date(anio, mes - 1, 1);
+
+      const nombreMes =
+        fechaMes.toLocaleDateString(
+          'es-AR',
+          {
+            month: 'long',
+            year: 'numeric'
+          }
+        );
+
+      const texto = `RESUMEN MENSUAL - GESTIÓN DE PLOMERÍA
+
+Mes: ${nombreMes}
+
+--------------------------------
+
+TOTAL DE SERVICIOS: ${servicios.length}
+
+SERVICIOS REALIZADOS: ${realizados}
+
+SERVICIOS PENDIENTES: ${pendientes}
+
+MANTENIMIENTOS: ${mantenimientos}
+
+--------------------------------
+
+TOTAL COBRADO:
+$${totalCobrado.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}
+
+PENDIENTE POR COBRAR:
+$${totalPendiente.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}
+
+--------------------------------
+
+TOTAL PARA PLOMEROS:
+$${totalPlomeros.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}
+
+TOTAL MI PARTE:
+$${totalMiParte.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}
+
+--------------------------------
+
+Generado el:
+${new Date().toLocaleString('es-AR')}
+`;
+
+      const archivo =
+        new Blob(
+          [texto],
+          {
+            type:
+              'text/plain;charset=utf-8'
+          }
+        );
+
+      const url =
+        URL.createObjectURL(archivo);
+
+      const enlace =
+        document.createElement('a');
+
+      enlace.href = url;
+
+      enlace.download =
+        `Resumen_${anio}_${String(mes).padStart(2, '0')}.txt`;
+
+      document.body.appendChild(enlace);
+
+      enlace.click();
+
+      document.body.removeChild(enlace);
+
+      URL.revokeObjectURL(url);
+    }
+
+</script>
+</body>
+</html>
