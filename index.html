@@ -1961,13 +1961,35 @@
       ==========================================
     */
 
-    mostrarProductos();
+const SUPABASE_URL = "https://prukxmshfuqfhfmyilio.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-i1Ks7luvgmOegAqSsjDIg_92vpgqMb";
 
-    actualizarCarrito();
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
+async function cargarProductosSupabase() {
+  const { data, error } = await supabaseClient
+    .from("productos")
+    .select("id, nombre, descripcion, precio, stock, categoria, imagen, activo")
+    .eq("activo", true);
+
+  if (error) {
+    console.error("Error al cargar productos:", error);
+    return;
+  }
+
+  productos.splice(0, productos.length, ...data);
+  mostrarProductos();
+}
+
+    
+cargarProductosSupabase();
+actualizarCarrito();
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> 
   </script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </body>
 </html>
